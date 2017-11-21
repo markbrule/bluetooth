@@ -1,0 +1,6 @@
+name = Bluetooth Beacon Plan View
+description = Provide a plan view for Bluetooth beacon receiver display
+core = 7.x
+package = Bluetooth
+
+configure = admin/config/bluetooth/bt-planview

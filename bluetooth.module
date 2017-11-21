@@ -1,0 +1,256 @@
+<?php
+
+define("STATUS_URL", "STATUS_CONFIG_URL");
+define("CONFIG_URL", "BLUETOOTH_CONFIG_URL");
+define("START_URL", "BLUETOOTH_START_URL");
+define("STOP_URL", "BLUETOOTH_STOP_URL");
+
+/**
+ * Support functions for managing Bluetooth BLE (Eddystone) beacons
+ *
+ * Works in conjunction with the content types defined in the bluetooth-beacons feature.
+ */
+
+/**
+ * Implement hook_menu
+ */
+function bluetooth_menu() {
+    $items['admin/configure/bluetooth'] = array(
+        'page callback' => 'drupal_get_form',
+        'page arguments' => array('_bluetooth_admin_form'),
+        'access callback' => true,
+    );
+    
+    // parameter is either the NID of a Bluetooth Receiver or "all"
+    $items['ble/publish-config/%'] = array(
+        'page callback' => '_bluetooth_publish_beacons_config',
+        'page arguments' => array(2),
+        'access callback' => true,
+    );
+
+    // usage: ble/receiver/{nid,all}/{start,stop}/{all,beacons,temperature}
+    $items['ble/receiver/%/%/%'] = array(
+        'page callback' => '_bluetooth_receiver_run_state',
+        'page arguments' => array(2,3,4),
+        'access callback' => true,
+    );
+    
+    // usage: ble/receiver/status/[nid]
+    $items['ble/receiver/status/%'] = array(
+        'page callback' => '_bluetooth_receiver_status',
+        'page arguments' => array(3),
+        'access callback' => true,
+    );
+    
+    return $items;
+}
+
+
+/**
+ * Check and report on the status of a receiver
+ */
+function _bluetooth_receiver_status($nid) {
+    $r = node_load($nid);
+    if ($r == null || $r->type != 'bt_receiver') {
+        drupal_set_message('Object is not a receiver', 'error');
+        drupal_goto($_SERVER['HTTP_REFERER']);
+    }
+
+    $send_to = str_replace('%IP%', $r->field_ip_address['und'][0]['value'], variable_get(STATUS_URL));
+    
+    $x = drupal_http_request($send_to, array(
+        'headers' => array('Content-Type:application/json'),
+        'method' => 'GET',
+    ));
+
+    if ($x->code == 200) {
+        $status = json_decode($x->data)->status;
+        $s = 'beacons are ' . $status->beacons . ', temperature is ' . $status->temperature;
+        drupal_set_message($r->title . ' status: ' . $s, 'status');
+    } else {
+        watchdog('bluetooth', 'Error retrieving receiver status: ' . $x->error);
+        drupal_set_message('Error retrieving status [' . $x->code . '] receiver: ' . $r->title, 'error');
+    }
+
+    drupal_goto($_SERVER['HTTP_REFERER']);
+}
+
+
+/**
+ * publish one or all receiver configurations
+ */
+function _bluetooth_publish_beacons_config($rnid) {
+    $receivers = _bluetooth_load_receiver_nodes($rnid);
+
+    // construct the mappings part of the configuration
+    $bq = new EntityFieldQuery();
+    $bres = $bq->entityCondition('entity_type', 'node')
+               ->entityCondition('bundle', 'bt_beacon')
+               ->execute();
+
+    if (!isset($bres['node']) || count(array_keys($bres['node'])) == 0) {
+        watchdog('bluetooth', 'No BT_Beacon mappings found');
+        drupal_set_message('No Bluetooth Beacons mappings found.', 'error');
+        drupal_goto($_SERVER['HTTP_REFERER']);
+    }
+
+    $results = array();
+    foreach ($receivers as $nid => $rcv) {
+
+        $mappings = array();
+        if (isset($bres['node'])) {
+            foreach (array_keys($bres['node']) as $bnid) {
+                $b = node_load($bnid);
+                $rcvt = $rcv->title;
+                $mappings[] = array(
+                    'sensor' => $b->title,
+                    'path' => str_replace('%RECEIVER%', $rcvt, $b->field_sensor_path['und'][0]['value']),
+                    'field' => str_replace('%RECEIVER%', $rcvt, $b->field_field_name['und'][0]['value']),
+                );
+            }
+        }
+
+        $send_to = str_replace("%IP%", $rcv->field_ip_address['und'][0]['value'], variable_get(CONFIG_URL));
+        $config = array(
+            'version' => '1.1',
+            'beacons' => array(
+                'name' => $rcv->title,
+                'mqtt' => $rcv->field_mqtt_address['und'][0]['value'],
+                'frequency' => $rcv->field_sample_interval['und'][0]['value'],
+                'namespace' => $rcv->field_namespace['und'][0]['value'],
+                'mode' => $rcv->field_sample_method['und'][0]['value'],
+                'mappings' => $mappings,
+            ),
+        );
+        if ($rcv->field_publish_temperature['und'][0]['value']) {
+            $config['temperature'] = array(
+                'mqtt' => $rcv->field_mqtt_address['und'][0]['value'],
+                'frequency' => $rcv->field_temperature_frequency['und'][0]['value'],
+                'sensor' => $rcv->field_temperature_sensor['und'][0]['value'],
+                'field' => $rcv->field_temperature_field['und'][0]['value'],
+            );
+        }
+        $x = drupal_http_request($send_to, array(
+            'headers' => array('Content-Type:application/json'),
+            'method' => 'POST',
+            'data' => json_encode($config),
+        ));
+        if ($x->code == 200) {
+            drupal_set_message('Updated receiver: ' . $rcv->title, 'status');
+        } else {
+            watchdog('bluetooth', 'Error updating receiver: ' . $x->error);
+            drupal_set_message('Error updating [' . $x->code . '] receiver: ' . $rcv->title, 'error');
+        }
+    }
+
+    drupal_goto($_SERVER['HTTP_REFERER']);
+}
+
+
+/**
+ * Support function - load receiver nodes
+ *
+ * @param rcvr - 'all' or NID of a receiver
+ *
+ * @return associative array nid => node
+ */
+function _bluetooth_load_receiver_nodes($rcvr) {
+    if ($rcvr == 'all') {
+        $query = new EntityFieldQuery();
+        $res = $query->entityCondition('entity_type', 'node')
+                     ->entityCondition('bundle', 'bt_receiver')
+                     ->execute();
+        $receivers = (isset($res['node'])) ? node_load_multiple(array_keys($res['node'])) : array();
+    } else {
+        $receivers = array($rcvr => node_load($rcvr));
+    }
+
+    return $receivers;
+}
+
+
+/**
+ * Menu callback to operate on receivers
+ *
+ * @param $receivers = 'all' or the NID of a single receiver
+ * @param $action = 'start' or 'stop'
+ * @param $sensor = 'all' , 'beacons' or 'temperature'
+ */
+function _bluetooth_receiver_run_state($receivers,$action,$sensor) {
+    $rcv_nodes = _bluetooth_load_receiver_nodes($receivers);
+    $op = ($action == "start") ? variable_get(START_URL) : variable_get(STOP_URL);
+    $results = array();
+
+    foreach ($rcv_nodes as $nid => $r) {
+        $send_to = str_replace("%IP%", $r->field_ip_address['und'][0]['value'], $op) . '/' . $sensor;
+
+        $x = drupal_http_request($send_to, array(
+            'headers' => array('Content-Type:application/json'),
+            'method' => 'GET',
+        ));
+        if ($x->code == 200) {
+            drupal_set_message('Set ' . $sensor . ' sensors to ' . $action . ' on ' . $r->title, 'status');
+        } else {
+            watchdog('bluetooth', 'Error updating sensor states: ' . $x->error);
+            drupal_set_message('Error [' . $x->code . '] updating ' . $r->title, 'error');
+        }
+    }
+
+    drupal_goto($_SERVER['HTTP_REFERER']);
+}
+
+
+/**
+ * Administration form
+ */
+function _bluetooth_admin_form($form, $form_state) {
+    $form['status'] = array(
+        '#type' => 'textfield',
+        '#title' => 'Status',
+        '#description' => 'Endpoint formula for getting the current status of a receiver',
+        '#default_value' => variable_get(STATUS_URL, ''),
+    );
+
+    $form['config'] = array(
+        '#type' => 'textfield',
+        '#title' => 'Configuration',
+        '#description' => 'Endpoint formula for sending a new configuration to the receiver',
+        '#default_value' => variable_get(CONFIG_URL, ''),
+    );
+    
+    $form['start'] = array(
+        '#type' => 'textfield',
+        '#title' => 'Start',
+        '#description' => 'Endpoint formula for starting the receiver',
+        '#default_value' => variable_get(START_URL, ''),
+    );
+
+    $form['stop'] = array(
+        '#type' => 'textfield',
+        '#title' => 'Stop',
+        '#description' => 'Endpoint formula for stopping the receiver',
+        '#default_value' => variable_get(STOP_URL, ''),
+    );
+
+    $form['info'] = array(
+        '#type' => 'markup',
+        '#markup' => "Substitution Pattern: %IP% is the receiver<br>",
+    );
+
+    $form['submit'] = array(
+        '#type' => 'submit',
+        '#value' => 'Submit',
+    );
+    
+    return $form;
+}
+
+
+function _bluetooth_admin_form_submit($form, $form_state) {
+    variable_set(STATUS_URL, $form_state['values']['status']);
+    variable_set(CONFIG_URL, $form_state['values']['config']);
+    variable_set(START_URL, $form_state['values']['start']);
+    variable_set(STOP_URL, $form_state['values']['stop']);
+    drupal_set_message('Values udpated', 'status');
+}
+

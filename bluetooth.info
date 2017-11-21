@@ -1,0 +1,5 @@
+name = Bluetooth Beacon Manager
+description = Management and support functions for tracking BLE (Eddystone) beacons and a collection of receivers.
+core = 7.x
+package = Bluetooth
+configure = admin/configure/bluetooth

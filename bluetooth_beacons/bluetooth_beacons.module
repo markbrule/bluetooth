@@ -1,0 +1,7 @@
+<?php
+/**
+ * @file
+ * Code for the bluetooth-beacons feature.
+ */
+
+include_once 'bluetooth_beacons.features.inc';

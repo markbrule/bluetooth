@@ -1,0 +1,358 @@
+<?php
+
+/**
+ * REST interface for creating, updating, or deleting nodes
+ *
+ * Supports any Content Type defined through the Drupal GUI
+ */
+
+define("PROPERTIES","NODE_REST_PROPERTIES");
+define("CONTEXT","NODE_REST_CONTEXT");
+define("PROP_DATA","NODE_REST_PROP_DATA");
+define("FIELD_CACHE","NODE_REST_FIELD_CACHE");
+
+/**
+ * Implements hook_menu
+ */
+function nodecontentrest_menu() {
+    $items['admin/configure/nodecontentrest'] = array(
+        'type' => MENU_CALLBACK,
+        'page callback' => 'drupal_get_form',
+        'page arguments' => array('_nodecontentrest_admin'),
+        'access callback' => true,
+    );
+
+    // (context)/query/(content type)
+    //   GET: retrieve all instances of data
+    $items[variable_get(CONTEXT) . '/query/%'] = array(
+        'type' => MENU_CALLBACK,
+        'page callback' => 'nodecontentrest_query_data',
+        'page arguments' => array(2),
+        'delivery callback' => 'nodecontentrest_render_direct',
+        'access callback' => true,
+    );
+    
+    // (context)/(content type)
+    //    GET: retrieve schema
+    //    POST: make changes to data
+    $items[variable_get(CONTEXT) . '/%'] = array(
+        'type' => MENU_CALLBACK,
+        'page callback' => 'nodecontentrest_entry_point',
+        'page arguments' => array(1),
+        'delivery callback' => 'nodecontentrest_render_direct',
+        'access callback' => true,
+    );
+
+    return $items;
+}
+
+
+/**
+ * Implement query function
+ */
+function nodecontentrest_query_data($content_type) {
+    $query = new EntityFieldQuery();
+    $result = $query->entityCondition('entity_type', 'node')
+                    ->entityCondition('bundle', $content_type)
+                    ->execute();
+
+    $fields = array_keys(field_info_instances('node', $content_type));
+    $props = variable_get(PROPERTIES);
+    $return = array();
+    if (isset($result['node'])) {
+        foreach ($result['node'] as $nid => $x) {
+            $t = array();
+            $n = node_load($nid);
+            foreach ($props as $p => $v)
+                if ($v['use']) $t[$p] = $n->$p;
+            foreach ($fields as $f)
+                $t[$f] = $n->$f['und'][0][_nodecontentrest_get_field($f)];
+            $return[] = $t;
+        }
+    }
+
+    return json_encode($return);
+}
+
+
+/**
+ * Implement the administration page
+ */
+function _nodecontentrest_admin($form, $form_state) {
+    $properties = variable_get(PROPERTIES);
+
+    $values = array();
+    $keys = array_keys($properties);
+    $options = array();
+    foreach ($keys as $k) {
+        $options[$k] = $k;
+        if ($properties[$k]['use']) $values[] = $k;
+    }
+    
+    $form['properties'] = array(
+        '#type' => 'checkboxes',
+        '#options' => $options,
+        '#default_value' => $values,
+        '#title' => 'Properties',
+        '#description' => 'Properties of "node" bundles that are accessible through the API',
+    );
+
+    $form['context'] = array(
+        '#type' => 'textfield',
+        '#default_value' => variable_get(CONTEXT),
+        '#title' => 'Context',
+        '#description' => 'Context for the root of the REST API methods',
+    );
+
+    $form['submit'] = array(
+        '#type' => 'submit',
+        '#value' => 'Submit',
+    );
+
+    return $form;
+}
+
+function _nodecontentrest_admin_submit($form, $form_state) {
+    $properties = variable_get(PROPERTIES);
+
+    foreach (array_keys($properties) as $k)
+        $properties[$k]['use'] = false;
+
+    foreach ($form_state['values']['properties'] as $k => $v) {
+        if ($k === $v)
+            $properties[$k]['use'] = true;
+    }
+
+    variable_set(PROPERTIES, $properties);
+    variable_set(CONTEXT, $form_state['values']['context']);
+    drupal_set_message('Values updated', 'status');
+    cache_clear_all();
+}
+
+
+/**
+ * Page callback for REST endpoint
+ *
+ * GET: return the schema for the named content type
+ * POST: data is "json={keys:{key:value, ...}, values={key:value, ...}}"
+ */
+function nodecontentrest_entry_point($content_type) {
+    try {
+        if ($_SERVER['REQUEST_METHOD'] == 'GET') {
+            $fields = field_info_instances('node', $content_type);
+            $out = array();
+            foreach (variable_get(PROPERTIES) as $prop => $vec) {
+                if ($vec['use'])
+                    $out[$prop] = array(
+                        'type' => $vec['type'],
+                        'description' => $vec['description']
+                    );
+            }
+            
+            foreach ($fields as $name => $info) {
+                $out[$name] = array(
+                    "type" => $info["display"]["default"]["type"],
+                    "description" => $info["description"],
+                );
+            }
+            
+            return json_encode($out);
+        } else if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+            $v = _nodecontentrest_validate_data($_POST);
+
+            if ($v !== true)
+                return json_encode($v);
+
+            $data = json_decode($_POST['json'],true);
+            $return_as_array = true;
+
+            if (in_array("keys", array_keys($data), true)) {
+                $return_as_array = false;
+                $data = array($data);
+            }
+
+            $returns = array();
+
+            foreach ($data as $d) {
+                $nodes = _nodecontentrest_select_nodes($content_type, $d['keys']);
+
+                if (isset($nodes['success'])) {
+                    if (count($nodes['success']) > 1) {
+                        $returns[] = array(
+                            "success" => "false",
+                            "reason" => "matched more than one object (count = " . count($nodes['success']) . ")",
+                        );
+                    } else {
+                        if (count($nodes['success']) == 1) {
+                            $created = false;
+                            $node = array_pop($nodes['success']);
+                        } else {
+                            $created = true;
+                            $node = new stdClass();
+                            $node->is_new = true;
+                            $node->type = $content_type;
+                            foreach ($d['keys'] as $key => $value) {
+                                _nodecontentrest_set_attribute($node, $key, $value);
+                            }
+                        }
+
+                        foreach ($d['values'] as $key => $value) {
+                            _nodecontentrest_set_attribute($node, $key, $value);
+                        }
+
+                        try {
+                            node_save($node);
+                            $returns[] = array(
+                                'success' => 'true',
+                                'info' => (($created) ? 'Created new record' : 'Updated existing record')
+                            );
+                        } catch (Exception $e) {
+                            $returns[] = array(
+                                'success' => 'false',
+                                'reason' => 'error from save: ' . $e->getMessage(),
+                            );
+                        }
+                    }
+                } else {
+                    $returns[] = array(
+                        "success" => "false",
+                        "reason" => $nodes['failure'],
+                    );
+                }
+            }
+        }
+        return json_encode( ($return_as_array) ? $returns : $returns[0] );
+
+    } catch (Exception $e) {
+        return json_encode(
+            Array(
+                'success' => 'false',
+                'reason' => 'caught exception: ' . $e->getMessage()));
+    }
+}
+
+
+/**
+ * Support function to set a value on a node
+ *
+ * @param $node  - node to update
+ * @param $key   - attribute name (could be a property, could be a field
+ * @param $value - value to set
+ *
+ * @return updated node
+ */
+function _nodecontentrest_set_attribute($node, $key, $value) {
+    $props = array_keys(variable_get(PROPERTIES));
+    if (in_array($key,$props)) {
+        $node->$key = $value;
+    } else {
+        $node->$key = Array('und' => Array(0 => Array(_nodecontentrest_get_field($key) => $value)));
+    }
+
+    return $node;
+}
+
+
+/**
+ * Support function: select nodes
+ *
+ * @param $content_type - node content type
+ * @param $criteria - object containing key field names and values
+ *
+ * @return an associative array of with exactly one key:
+ *         'success' => array of nodes that match the criteria
+ *         'failure' => explanation of error
+ */
+function _nodecontentrest_select_nodes($content_type, $criteria) {
+    $query = new EntityFieldQuery();
+    $query->entityCondition('entity_type', 'node')
+          ->entityCondition('bundle', $content_type);
+
+    $props = array_keys(variable_get(PROPERTIES));
+    foreach ($criteria as $field => $value) {
+        if (in_array($field, $props)) {
+            $query->propertyCondition($field, $value);
+        } else {
+            $query->fieldCondition($field, _nodecontentrest_get_field($field), $value, '=');
+        }
+    }
+
+    $result = $query->execute();
+    $nodes = array();
+    if (isset($result['node'])) {
+        $nids = array_keys($result['node']);
+        $nodes['success'] = entity_load('node', $nids);
+    } else {
+        $nodes['success'] = array();
+    }
+
+    return $nodes;
+}
+
+
+/**
+ * Support function to test data block for validity
+ *
+ * @param $post - $_POST variable from the page request
+ *
+ * @return true - if the structure of the request is acceptable
+ *         array - containing JSON-encodable data for return
+ */
+function _nodecontentrest_validate_data($post) {
+    if (! isset($post['json'])) {
+        watchdog('nodecontentrest', 'No JSON parameter in data block: ' . print_r($post,true));
+        return array(
+            'success' => 'false',
+            'missing JSON parameter'
+        );
+    }
+    
+    $args = json_decode($post['json'],true);
+    if (!is_array($args) || in_array("keys", array_keys($args), true))
+        $args = array($args);
+
+    $object = 0;
+    $error = false;
+
+    foreach ($args as $a) {
+        if (! isset($a['keys']) || ! isset($a['values'])) {
+            watchdog('nodecontentrest', 'Improperly formed POST criteriea (needs keys and values) [object #' . $object . ']: ' . print_r($a,true));
+            $error = true;
+        }
+        $object++;
+    }
+
+    return ($error) ? array('success' => 'false', 'reason' => 'improperty formed request') : true;
+}
+
+
+/**
+ * Get field value index name
+ *
+ * @param $field_name - name of the field
+ *
+ * @return name in 'value' array (eg: value, target_id)
+ */
+function _nodecontentrest_get_field($field_name) {
+    $inx = variable_get(FIELD_CACHE, array());
+    if (isset($inx[$field_name]))
+        return $inx[$field_name];
+    else {
+        $fi = field_info_field($field_name);
+        if ($fi != null) {
+            $inx[$field_name] = current(array_keys($fi['columns']));
+            variable_set(FIELD_CACHE, $inx);
+            return $inx[$field_name];
+        }
+    }
+
+    return null;
+}
+
+
+/**
+ * Delivery function
+ */
+function nodecontentrest_render_direct($page_callback_result) {
+    print $page_callback_result;
+}

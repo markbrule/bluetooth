@@ -1,0 +1,29 @@
+<?php
+
+/**
+ * Update 7.x-1.0
+ *    - context path is now configured in the configuration panel
+ *    - provides queries to all instances of a content type
+ *    - provides setting the properties of a node to be returned
+ */
+function nodecontentrest_update_7100(&$sandbox) {
+    variable_set(PROPERTIES, array(
+        "nid" => array('use' => true, 'type' => 'integer', 'description' => 'primary key'),
+        "vid" => array('use' => false, 'type' => 'integer', 'description' => 'version id'),
+        "type" => array('use' => true, 'type' => 'text', 'description' => 'content type'),
+        "language" => array('use' => false, 'type' => 'text', 'description' => 'default language'),
+        "title" => array('use' => true, 'type' => 'text', 'description' => 'object name'),
+        "uid" => array('use' => false, 'type' => 'integer', 'description' => 'owner user id'),
+        "status" => array('use' => false, 'type' => 'integer', 'description' => 'status'),
+        "created" => array('use' => false, 'type' => 'integer', 'description' => 'timestamp when created'),
+        "changed" => array('use' => false, 'type' => 'integer', 'description' => 'timestamp when last changed'),
+        "comment" => array('use' => false, 'type' => 'integer', 'description' => 'comment rule'),
+        "promote" => array('use' => false, 'type' => 'integer', 'description' => 'promote rule'),
+        "sticky" => array('use' => false, 'type' => 'integer', 'description' => 'sticky rule'),
+        "tnid" => array('use' => false, 'type' => 'integer', 'description' => 'translation node id'),
+        "translate" => array('use' => false, 'type' => 'integer', 'description' => 'is translation needed'),
+    ));
+
+    variable_set(CONTEXT, "node-rest");
+    cache_clear_all();
+}

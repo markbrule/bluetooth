@@ -1,0 +1,6 @@
+name = Node Content REST Interface
+description = Interface for updating, creating or deleting nodes through a REST interface
+core = 7.x
+version = 7.x-1.3
+package = Envigilant
+configure = admin/configure/nodecontentrest

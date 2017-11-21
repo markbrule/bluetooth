@@ -1,0 +1,474 @@
+<?php
+
+define("BT_PLANVIEW_EXPIRATION_INTERVAL", "BT_PLANVIEW_EXPIRATION_INTERVAL");
+define("BT_PLANVIEW_EXPIRATION_DEFAULT", "1 minute");
+
+/**
+ * @file provide a Plan View of Bluetooth Receiver Array
+ */
+
+/**
+ * Depends on two node types being defined:
+ *
+ * bt_receiver and bt_receiver_location
+ * bt_beacon and bt_beacon_detection
+ * bt_floor_plan
+ */
+
+/**
+ * Implements hook_menu
+ */
+function bt_planview_menu() {
+    // bt-planview/data-update/(node-id)
+    $items['bt-planview/data-update/%'] = array(
+        'type' => MENU_CALLBACK,
+        'page callback' => 'bt_planview_data_update',
+        'page arguments' => array(2),
+        'delivery callback' => 'bt_planview_render_direct',
+        'access callback' => true,
+    );
+
+    // bt-planview/live-page/(node-id)
+    // image must be loaded in sites/default/files
+    $items['bt-planview/live-page'] = array(
+        'type' => MENU_CALLBACK,
+        'page callback' => 'bt_planview_create_page',
+        'page arguments' => array(2),
+        'access callback' => true,
+    );
+
+    // bt-planview/update-location/(floor plan nid)/(receiver id)/(x)/(y)
+    // ajax callback to add or modify the x/y of the receiver on a given floor plan
+    $items['bt-planview/update-location/%/%/%/%'] = array(
+        'type' => MENU_CALLBACK,
+        'page callback' => 'bt_planview_update_location',
+        'page arguments' => array(2,3,4,5),
+        'delivery callback' => 'bt_planview_render_direct',
+        'access callback' => true,
+    );
+    
+    // bt-planview/location-editor/(machine nid)
+    // page to allow the user to manage locations of all sensors
+    $items['bt-planview/location-editor/%'] = array(
+        'type' => MENU_CALLBACK,
+        'page callback' => 'bt_planview_location_editor',
+        'page arguments' => array(2),
+        'access callback' => true,
+    );
+
+    $items['admin/config/bluetooth/bt-planview'] = array(
+        'type' => MENU_CALLBACK,
+        'page callback' => 'drupal_get_form',
+        'page arguments' => array('bt_planview_admin_form'),
+        'access callback' => true,
+    );
+
+    return $items;
+}
+
+/**
+ * hook_block_info()
+ */
+function bt_planview_block_info() {
+    $blocks['bt_planview_receivers'] = array(
+        'info' => 'All Receivers',
+    );
+
+    $blocks['bt_planview_rt_symbols'] = array(
+        'info' => 'Symbols for each current real-time data record',
+    );
+
+    return $blocks;
+}
+
+/**
+ * hook_block_view($delta)
+ */
+function bt_planview_block_view($delta = '') {
+    switch ($delta) {
+    case 'bt_planview_receivers':
+        $rs = _bt_planview_load_all_receivers(); // TODO: used to be sensors
+        $fps = _bt_planview_all_floor_plans();
+
+        $block['subject'] = 'Receivers';
+        $headers = array('Path');
+        foreach ($fps as $id => $m)
+            $headers[] = l($m->title, '/bt-planview/location-editor/' . $id);
+        $rows = [];
+        foreach ($rs as $id => $s) {
+            $locs = _bt_planview_all_locations_for_receiver($id);
+            $mlink = array();
+            foreach ($locs as $loc) {
+                if (isset($fps[$loc->field_floor_plan['und'][0]['target_id']])) {
+                    $mnid = $loc->field_floor_plan['und'][0]['target_id'];
+                    $mlink[$mnid] = '(' . $loc->field_x['und'][0]['value'] . ',' . $loc->field_y['und'][0]['value'] . ')&nbsp;'
+                        . l('remove', 'node/' . $loc->nid . '/delete');
+                }
+            }
+            $t = array($s->title);
+            foreach ($fps as $mid => $machine)
+                $t[] = isset($mlink[$mid]) ? $mlink[$mid] : '';
+
+            $rows[] = $t;
+        }
+        $block['content'] = array(
+            '#theme' => 'table',
+            '#header' => $headers,
+            '#rows' => $rows,
+        );
+
+        break;
+
+    case 'bt_planview_rt_symbols':
+        $query = new EntityFieldQuery();
+        $result = $query
+            ->entityCondition('entity_type', 'node')
+            ->entityCondition('bundle', 'bt_receiver')
+            ->execute();
+        $symbols = _bt_planview_collect_all_symbols();
+        $headers = array('Receiver', 'Status', 'Symbol');
+        $rows = array();
+        foreach ($result['node'] as $rnid => $o) {
+            $r = node_load($rnid);
+            $status = $r->field_receiver_status['und'][0]['value'];
+            if (isset($symbols[$status]))
+                $rows[] = array($r->title, $status, '<img src="' . $symbols[$status] . '"/>');
+            else
+                $rows[] = array($r->title, $status, 'No Symbol');
+        }
+
+        $block['subject'] = 'Assigned Receiver Symbols';
+        $block['content'] = array(
+            '#theme' => 'table',
+            '#header' => $headers,
+            '#rows' => $rows,
+        );
+        break;
+    }
+
+    return $block;
+}
+
+
+/**
+ * Create the components for the location editor
+ */
+function bt_planview_location_editor($fpnid) {
+    $floorplan = node_load($fpnid);
+    $image_url = '/sites/default/files/' . $floorplan->field_image['und'][0]['filename'];
+
+    $items['#attached']['js'][] = drupal_get_path('module', 'bt_planview') . '/js/location-editor.js';
+    $items['#attached']['css'][] = drupal_get_path('module', 'bt_planview') . '/css/sensors.css';
+
+    $items['main'] = array(
+        '#type' => 'markup',
+        '#markup' => '<div class="planview" id="' . $fpnid . '" style="position: relative">'
+            . '<img src="' . $image_url . '" style="top:0px; left:0px"/></div>',
+        '#weight' => 0,
+    );
+
+    $receivers = _bt_planview_load_all_receivers();
+
+    $opts = array();
+    $first = null;
+    foreach ($receivers as $rid => $ro) {
+        if ($first == null) $first = $rid;
+        $opts[$rid] = $ro->title;
+    }
+
+    $items['receivers'] = array(
+        '#type' => 'select',
+        '#title' => 'Receiver',
+        '#options' => $opts,
+        '#attributes' => array('name' => array('sensor')),
+        '#default_value' => 0,
+        '#weight' => 40,
+    );
+
+    if ($first != null) {
+        $items['current'] = array(
+            '#type' => 'markup',
+            '#markup' => '<div id="current"><h3>Currently Editing: '
+            . '<span id="current-edit" value="' . $receivers[$first]->nid . '">' . $receivers[$first]->title . '</span></h3></div>',
+            '#weight' => 10,
+        );
+    }
+
+    return $items;
+}
+
+
+/**
+ * Administration page
+ */
+function bt_planview_admin_form($form, $form_state) {
+    $form['expiration'] = array(
+        '#type' => 'textfield',
+        '#title' => 'Beacon Detection Expiration',
+        '#default_value' => variable_get(BT_PLANVIEW_EXPIRATION_INTERVAL, BT_PLANVIEW_EXPIRATION_DEFAULT),
+        '#size' => 60,
+        '#maxlength' => 120,
+        '#description' => 'Time interval after which beacon detections are expired. Expressed as text expression of the time interval, such as "1 hour"',
+    );
+
+    $form['submit'] = array(
+        '#type' => 'submit',
+        '#value' => 'Submit',
+    );
+    
+    return $form;
+}
+
+function bt_planview_admin_form_validate($form, $form_state) {
+    $interval = DateInterval::createFromDateString($form_state['values']['expiration']);
+    if ( ($interval->y == 0) && ($interval->m == 0) && ($interval->d == 0) &&
+         ($interval->h == 0) && ($interval->i == 0) && ($interval->s == 0) ) {
+        form_set_error('expiration', 'Expiration needs to be a valid, non-zero DateInterval');
+    }
+}
+
+function bt_planview_admin_form_submit($form, $form_state) {
+    variable_set(BT_PLANVIEW_EXPIRATION_INTERVAL, $form_state['values']['expiration']);
+    drupal_set_message('Successfully updated configuration', 'status');
+}
+
+
+/**
+ * Create the image page and load the javascript
+ */
+function bt_planview_create_page($nid) {
+    $pnode = node_load($nid);
+    // TODO: test that $pnode points to a bt_floor_plan node
+    $image_url = '/sites/default/files/' . $pnode->field_image['und'][0]['filename'];
+
+    $ra['#attached']['js'][] = drupal_get_path('module', 'bt_planview') . '/js/sensors.js';
+    $ra['#attached']['css'][] = drupal_get_path('module', 'bt_planview') . '/css/sensors.css';
+    $ra['main'] = array(
+        '#type' => 'markup',
+        '#markup' => '<div class="planview" id="' . $nid . '" style="position: relative">'
+            . '<img src="' . $image_url . '" style="top:0px; left:0px"/></div>',
+    );
+
+    return $ra;
+}
+
+/**
+ * Gather all sensors and send for rendering
+ */
+function bt_planview_data_update($nid) {
+    $detects = _bt_planview_gather_beacon_detections($nid);
+    $locs = $detects['locations'];
+    $symbols = _bt_planview_collect_all_symbols();
+
+    $h = '';
+    $interval = DateInterval::createFromDateString(variable_get(BT_PLANVIEW_EXPIRATION_INTERVAL, BT_PLANVIEW_EXPIRATION_DEFAULT));
+    $now = new DateTime();
+    $now->sub($interval);
+    
+    //watchdog('bt_planview', 'Now = ' . $now->format('U') . ', or = ' . $now->format('r'));
+    foreach ($detects['detects'] as $rcvr_nid => $drs) {
+        $rcvr = node_load($rcvr_nid);
+        if (! isset($symbols[$rcvr->field_receiver_status['und'][0]['value']])) {
+            watchdog('bt_planview', "No symbol found for status = " . $rcvr->field_receiver_status['und'][0]['value']);
+            $sym = '';
+        } else {
+            $sym = $symbols[$rcvr->field_receiver_status['und'][0]['value']];
+        }
+        
+        $h .= '<div class="hover-object" id="' . $rcvr_nid . '"'
+            . ' style="position: absolute; top: ' . $locs[$rcvr_nid]['y'] . 'px; left: ' . $locs[$rcvr_nid]['x'] . 'px">'
+            . '<img class="sensor-object" src="' . $sym . '"/>'
+            . '<span class="hover-text">Name: ' . $rcvr->title . ' [' . $rcvr->field_receiver_status['und'][0]['value'] . ']';
+
+        foreach ($drs as $dnid => $do) {
+            $o = node_load($do->nid);
+            $date = DateTime::createFromFormat('U', $o->field_timestamp['und'][0]['value']);
+            if (intval($date->format("U")) > intval($now->format("U"))) {
+                $beacon = node_load($o->field_beacon['und'][0]['target_id']);
+                $h .= '<br/>' . $beacon->field_beacon_description['und'][0]['value']
+                    . ': ' . $o->field_rssi['und'][0]['value'];
+            }
+        }
+
+        $h .= '</span></div>';
+    }
+    
+    return $h;
+}
+
+/**
+ * Update (or create) a location record for a given receiver
+ *
+ * @param $mid = bt_floor_plan NID
+ * @param $sid = bt_receiver NID
+ * @param $x = x-location
+ * @param $y = y-location
+ */
+function bt_planview_update_location($fpnid, $rid, $x, $y) {
+    // find the bt_receiver_location object for this receiver and floor plan
+    $query = new EntityFieldQuery();
+    $result = $query
+        ->entityCondition('entity_type', 'node')
+        ->entityCondition('bundle', 'bt_receiver_location')
+        ->fieldCondition('field_floor_plan', 'target_id', $fpnid, '=')
+        ->fieldCondition('field_receiver', 'target_id', $rid, '=')
+        ->execute();
+
+    if (! isset($result['node']) || count($result['node']) == 0) {
+        $fp = node_load($fpnid);
+        $rec = node_load($rid);
+        $recloc = new stdClass();
+        $recloc->is_new = true;
+        $recloc->title = $rec->title . ' @ ' . $fp->title;
+        $recloc->type = 'bt_receiver_location';
+        $recloc->field_floor_plan['und'][0]['target_id'] = $fpnid;
+        $recloc->field_receiver['und'][0]['target_id'] = $rid;
+        $recloc->field_x['und'][0]['value'] = $x;
+        $recloc->field_y['und'][0]['value'] = $y;
+        node_save($recloc);
+        return "SUCCESS";
+    } else if (count($result['node']) == 1) {
+        foreach ($result['node'] as $rnid => $xx) {
+            $recloc = node_load($rnid);
+            $recloc->field_x['und'][0]['value'] = $x;
+            $recloc->field_y['und'][0]['value'] = $y;
+            node_save($recloc);
+            return "SUCCESS";
+        }
+    } else {
+        $fp = node_load($fpnid);
+        $rec = node_load($rid);
+        $err = 'Found ' . count($result['node']) . ' location records for ' . $rec->title . ' @ ' . $fp->title;
+        watchdog('bt_planview', $err);
+        return "FAILURE: " . $err;
+    }
+}
+
+
+/**
+ * Delivery function for data
+ */
+function bt_planview_render_direct($page_callback_result) {
+    print $page_callback_result;
+}
+
+/**
+ * Support function: load all receivers
+ *
+ * @return - associative array of bt_receiver objects indexed by 'id'
+ */
+function _bt_planview_load_all_receivers() {
+    $query = new EntityFieldQuery();
+    $result = $query
+        ->entityCondition('entity_type', 'node')
+        ->entityCondition('bundle', 'bt_receiver', '=')
+        ->execute();
+
+    return (isset($result['node'])) ? node_load_multiple(array_keys($result['node'])) : array();
+}
+
+
+/**
+ * Support function to retrieve all the location objects for a sensor
+ *
+ * @param $rnid - NID of a bt_reciever
+ *
+ * @return - assoc array of bt_receiver_location nodes indexed by $nid
+ */
+function _bt_planview_all_locations_for_receiver($rnid) {
+    $query = new EntityFieldQuery();
+    $result = $query
+        ->entityCondition('entity_type', 'node')
+        ->entityCondition('bundle', 'bt_receiver_location', '=')
+        ->fieldCondition('field_receiver', 'target_id', $rnid, '=')
+        ->execute();
+
+    if (isset($result['node']))
+        return node_load_multiple(array_keys($result['node']));
+    else
+        return array();
+}
+
+
+/**
+ * Support function to retrieve all machine nodes
+ *
+ * @return - assoc array of bt_floor_plan nodes index by $nid
+ */
+function _bt_planview_all_floor_plans() {
+    $query = new EntityFieldQuery();
+    $result = $query
+        ->entityCondition('entity_type', 'node')
+        ->entityCondition('bundle', 'bt_floor_plan', '=')
+        ->execute();
+
+    if (isset($result['node']))
+        return node_load_multiple(array_keys($result['node']));
+    else
+        return array();
+}
+
+
+/**
+ * Support function - gather all real-time data records for a given machine
+ *
+ * @param $nid - floor plan NID
+ *
+ * @return associative array of arrays
+ *    'detects' => indexed by receiver, array of detections for that receiver
+ *    'locations' => indexed by receiver, array of ['x' 'y'] for that receiver 
+ */
+function _bt_planview_gather_beacon_detections($nid) {
+    // get a list of all of the receiver locations on this floor plan
+    $query = new EntityFieldQuery();
+    $result = $query
+        ->entityCondition('entity_type', 'node')
+        ->entityCondition('bundle', 'bt_receiver_location', '=')
+        ->fieldCondition('field_floor_plan', 'target_id', $nid, '=')
+        ->execute();
+     
+    $ret = array('detects' => array(), 'locations' => array());
+
+    if (isset($result['node'])) {
+        foreach ($result['node'] as $rclnid => $o) {
+            $rcvloc = node_load($rclnid);
+            $rcnid = $rcvloc->field_receiver['und'][0]['target_id'];
+            $subq = new EntityFieldQuery();
+            $subr = $subq->entityCondition('entity_type', 'node')
+                         ->entityCondition('bundle', 'bt_beacon_detection', '=')
+                         ->fieldCondition('field_receiver', 'target_id', $rcnid, '=')
+                         ->execute();
+            $ret['detects'][$rcnid] = (isset($subr['node'])) ? node_load_multiple(array_keys($subr['node'])) : array();
+            $ret['locations'][$rcnid] = array(
+                'x' => $rcvloc->field_x['und'][0]['value'],
+                'y' => $rcvloc->field_y['und'][0]['value'],
+            );
+        }
+    }
+    
+    return $ret;
+}
+
+/**
+ * Support function - gather all symbols for the RTdata
+ *
+ * @return - assoc array, indexed by symbol name, values are paths to the image file
+ */
+function _bt_planview_collect_all_symbols() {
+    $query = new EntityFieldQuery();
+    $result = $query
+        ->entityCondition('entity_type', 'node')
+        ->entityCondition('bundle', 'bt_symbol')
+        ->execute();
+
+    $base = '/sites/default/files/bt_planview_icons/';
+    $refs = array();
+    if (isset($result['node'])) {
+        foreach ($result['node'] as $nid => $x) {
+            $o = node_load($nid);
+            $refs[$o->title] = $base . $o->field_receiver_icon['und'][0]['filename'];
+        }
+    }
+
+    return $refs;
+}

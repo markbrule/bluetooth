@@ -1,0 +1,33 @@
+.hover-object .hover-text {
+	width: 200px;
+	background-color: #555;
+	color: #fff;
+	text-align: left;
+	padding: 5px 0;
+	border-radius: 6px;
+	position: absolute;
+	z-index: 1;
+	bottom: 125%;
+	left: 50%;
+	margin-left: -60px;
+	opacity: 0;
+	transition: opacity 1s;
+	padding-left: 5px;
+}
+
+.hover-object .hover-text::after {
+	content: "";
+	position: absolute;
+	top: 100%;
+	left: 50%;
+	margin-left: -5px;
+	border-width: 5px;
+	border-style: solid;
+	border-color: #555 transparent transparent transparent;
+}
+
+.hover-object:hover .hover-text {
+	visibility: visible;
+	opacity: 1;
+}
+

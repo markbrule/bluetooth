@@ -21,10 +21,10 @@ jQuery(document).ready( function($) {
     }
 
     function resetSensorIcons() {
-	$('img.sensor-object').attr('src', '/sites/all/modules/bt_planview/images/edit-loc-placed.jpg');
+	$('img.sensor-object').attr('src', '/sites/all/modules/bluetooth/bt_planview/images/edit-loc-placed.jpg');
 	var cid = $('span#current-edit').attr('value');
 	$('div.hover-object#' + cid + ' img')
-	    .attr('src', '/sites/all/modules/bt_planview/images/edit-loc-selected.jpg');
+	    .attr('src', '/sites/all/modules/bluetooth/bt_planview/images/edit-loc-selected.jpg');
     }
 
     $('div.planview').click( function(e) {

@@ -13,6 +13,7 @@ define("BT_PLANVIEW_EXPIRATION_DEFAULT", "1 minute");
  * bt_receiver and bt_receiver_location
  * bt_beacon and bt_beacon_detection
  * bt_floor_plan
+ * bt_symbol
  */
 
 /**

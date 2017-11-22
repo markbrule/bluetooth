@@ -451,47 +451,43 @@ function bluetooth_beacons_field_default_field_instances() {
     ),
   );
 
-  // Exported field_instance: 'node-bt_receiver-body'.
-  $field_instances['node-bt_receiver-body'] = array(
+  // Exported field_instance: 'node-bt_receiver-field_controller_url'.
+  $field_instances['node-bt_receiver-field_controller_url'] = array(
     'bundle' => 'bt_receiver',
     'default_value' => NULL,
     'deleted' => 0,
-    'description' => '',
+    'description' => 'URL to use for check-in function',
     'display' => array(
       'default' => array(
-        'label' => 'hidden',
+        'label' => 'above',
         'module' => 'text',
         'settings' => array(),
         'type' => 'text_default',
-        'weight' => 0,
+        'weight' => 12,
       ),
       'teaser' => array(
-        'label' => 'hidden',
-        'module' => 'text',
-        'settings' => array(
-          'trim_length' => 600,
-        ),
-        'type' => 'text_summary_or_trimmed',
+        'label' => 'above',
+        'settings' => array(),
+        'type' => 'hidden',
         'weight' => 0,
       ),
     ),
     'entity_type' => 'node',
-    'field_name' => 'body',
-    'label' => 'Body',
-    'required' => FALSE,
+    'field_name' => 'field_controller_url',
+    'label' => 'Controller URL',
+    'required' => 0,
     'settings' => array(
-      'display_summary' => TRUE,
-      'text_processing' => 1,
+      'text_processing' => 0,
       'user_register_form' => FALSE,
     ),
     'widget' => array(
+      'active' => 1,
       'module' => 'text',
       'settings' => array(
-        'rows' => 20,
-        'summary_rows' => 5,
+        'size' => 60,
       ),
-      'type' => 'text_textarea_with_summary',
-      'weight' => -4,
+      'type' => 'text_textfield',
+      'weight' => 12,
     ),
   );
 
@@ -652,6 +648,46 @@ function bluetooth_beacons_field_default_field_instances() {
       ),
       'type' => 'text_textfield',
       'weight' => 6,
+    ),
+  );
+
+  // Exported field_instance: 'node-bt_receiver-field_network_interface'.
+  $field_instances['node-bt_receiver-field_network_interface'] = array(
+    'bundle' => 'bt_receiver',
+    'default_value' => NULL,
+    'deleted' => 0,
+    'description' => 'Name of the interface on the receiver to retrieve IP address visible from the server.',
+    'display' => array(
+      'default' => array(
+        'label' => 'above',
+        'module' => 'text',
+        'settings' => array(),
+        'type' => 'text_default',
+        'weight' => 13,
+      ),
+      'teaser' => array(
+        'label' => 'above',
+        'settings' => array(),
+        'type' => 'hidden',
+        'weight' => 0,
+      ),
+    ),
+    'entity_type' => 'node',
+    'field_name' => 'field_network_interface',
+    'label' => 'Network Interface',
+    'required' => 0,
+    'settings' => array(
+      'text_processing' => 0,
+      'user_register_form' => FALSE,
+    ),
+    'widget' => array(
+      'active' => 1,
+      'module' => 'text',
+      'settings' => array(
+        'size' => 60,
+      ),
+      'type' => 'text_textfield',
+      'weight' => 13,
     ),
   );
 
@@ -1193,7 +1229,7 @@ function bluetooth_beacons_field_default_field_instances() {
   // Included for use with string extractors like potx.
   t('Beacon');
   t('Beacon Description');
-  t('Body');
+  t('Controller URL');
   t('Define the method for reporting the RSSI from a sampling interval.');
   t('Description');
   t('Description of the floor plan');
@@ -1210,8 +1246,10 @@ function bluetooth_beacons_field_default_field_instances() {
   t('Image file for the floor plan display');
   t('Interval, in millisecond, to sample Bluetooth Beacon data.');
   t('MQTT Address');
+  t('Name of the interface on the receiver to retrieve IP address visible from the server.');
   t('Namespace');
   t('Namespace of Eddystone beacons to accept.');
+  t('Network Interface');
   t('Number of milliseconds between publications of the temperature, if the temperature publication is on');
   t('Protocol, IP address, and port number of the MQTT queue to receive the messages.');
   t('Publish Temperature');
@@ -1234,6 +1272,7 @@ function bluetooth_beacons_field_default_field_instances() {
   t('The sensor path from SA for this beacon');
   t('The timestamp of the detection');
   t('Timestamp');
+  t('URL to use for check-in function');
   t('Vertical position of the receiver relative to the floor plan, (0,0) being the upper left corner.');
   t('When publishing temperature of the receiver, the SA path for the temperature value');
   t('When publishing temperature, the field name in SA to store the measurement');

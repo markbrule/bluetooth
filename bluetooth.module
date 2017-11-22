@@ -42,6 +42,13 @@ function bluetooth_menu() {
         'access callback' => true,
     );
     
+    $items['ble/check-in'] = array(
+        'type' => MENU_CALLBACK,
+        'page callback' => '_bluetooth_check_in',
+        'delivery callback' => 'bluetooth_render_direct',
+        'access callback' => true,
+    );
+    
     return $items;
 }
 
@@ -112,7 +119,10 @@ function _bluetooth_publish_beacons_config($rnid) {
 
         $send_to = str_replace("%IP%", $rcv->field_ip_address['und'][0]['value'], variable_get(CONFIG_URL));
         $config = array(
-            'version' => '1.1',
+            'version' => '1.2',
+            'name' => $rcv->title,
+            'controller' => $rcv->field_controller_url['und'][0]['value'],
+            'interface' => $rcv->field_network_interface['und'][0]['value'],
             'beacons' => array(
                 'name' => $rcv->title,
                 'mqtt' => $rcv->field_mqtt_address['und'][0]['value'],
@@ -254,3 +264,52 @@ function _bluetooth_admin_form_submit($form, $form_state) {
     drupal_set_message('Values udpated', 'status');
 }
 
+
+
+/**
+ * Check-in function for when a receiver comes online
+ *
+ * json parameter in data block contains {"name", "controller", "address", "interface"}
+ */
+function _bluetooth_check_in() {
+    $params = json_decode($_POST['json']);
+
+    // Find a receiver with that name
+    $query = new EntityFieldQuery();
+    $result = $query
+        ->entityCondition('entity_type', 'node')
+        ->entityCondition('bundle', 'bt_receiver')
+        ->propertyCondition('title', $params->name, '=')
+        ->execute();
+    
+    $ret = '{"status": "success"}';
+    if (isset($result['node']) && count($result['node']) == 1) {
+        $o = node_load(array_keys($result['node'])[0]);
+        $o->field_ip_address['und'][0]['value'] = $params->address;
+        $o->field_controller_url['und'][0]['value'] = $params->controller;
+        $o->field_network_interface['und'][0]['value'] = $params->interface;
+        node_save($o);
+    } else if ( (!isset($result['node'])) || count($result['node']) == 0) {
+        $o = new stdClass();
+        $o->type = 'bt_receiver';
+        $o->title = $params->name;
+        $o->field_ip_address['und'][0]['value'] = $params->address;
+        $o->field_controller_url['und'][0]['value'] = $params->controller;
+        $o->field_network_interface['und'][0]['value'] = $params->interface;
+        watchdog('bt_planview', 'New receiver checked in : '. $params['name']);
+        node_save($o);
+    } else {
+        watchdog('bluetooth', 'Check-in from ' . $params['name'] . ' returned multiple objects');
+        $ret = '{"status": "error", "description": "Multiple receiver objects found"}';
+    }
+
+    return $ret;
+}
+
+
+/**
+ * Delivery function for data
+ */
+function bluetooth_render_direct($page_callback_result) {
+    print $page_callback_result;
+}

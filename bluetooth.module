@@ -49,6 +49,14 @@ function bluetooth_menu() {
         'access callback' => true,
     );
     
+    // usage: ble/set-maximum/(bt detection nid)
+    $items['ble/set-maximum/%'] = array(
+        'type' => MENU_CALLBACK,
+        'page callback' => '_bluetooth_set_maximum',
+        'page arguments' => array(2),
+        'access callback' => true,
+    );
+    
     return $items;
 }
 
@@ -59,7 +67,7 @@ function bluetooth_menu() {
 function _bluetooth_receiver_status($nid) {
     $r = node_load($nid);
     if ($r == null || $r->type != 'bt_receiver') {
-        drupal_set_message('Object is not a receiver', 'error');
+        drupal_set_message('Object [' . $nid . '] is not a receiver', 'error');
         drupal_goto($_SERVER['HTTP_REFERER']);
     }
 
@@ -79,6 +87,43 @@ function _bluetooth_receiver_status($nid) {
         drupal_set_message('Error retrieving status [' . $x->code . '] receiver: ' . $r->title, 'error');
     }
 
+    drupal_goto($_SERVER['HTTP_REFERER']);
+}
+
+
+/**
+ * Copy the detection object and create a 'max' reading
+ */
+function _bluetooth_set_maximum($nid) {
+    $d = node_load($nid);
+    if ($d == null || $d->type != 'bt_beacon_detection' || $d->field_detection_mode['und'][0]['value'] != 'live') {
+        drupal_set_message('Provided object [' . $nid . '] is not a live detection', 'error');
+        drupal_goto($_SERVER['HTTP_REFERER']);
+    }
+
+    $query = new EntityFieldQuery();
+    $result = $query
+        ->entityCondition('entity_type', 'node')
+        ->entityCondition('bundle', 'bt_beacon_detection')
+        ->fieldCondition('field_detection_mode', 'value', 'max', '=')
+        ->fieldCondition('field_beacon', 'target_id', $d->field_beacon['und'][0]['target_id'], '=')
+        ->fieldCondition('field_receiver', 'target_id', $d->field_receiver['und'][0]['target_id'], '=')
+        ->execute();
+
+    if ( (! isset($result['node'])) || (count($result['node']) == 0) ) {
+        $o = new stdClass();
+        $o->is_new = true;
+        $o->type = 'bt_beacon_detection';
+        $o->field_detection_mode['und'][0]['value'] = 'max';
+        $o->field_beacon['und'][0]['target_id'] = $d->field_beacon['und'][0]['target_id'];
+        $o->field_receiver['und'][0]['target_id'] = $d->field_receiver['und'][0]['target_id'];
+    } else {
+        $o = node_load(array_keys($result['node'])[0]);
+    }
+
+    $o->field_rssi['und'][0]['value'] = $d->field_rssi['und'][0]['value'];
+    node_save($o);
+    drupal_set_message('Successfully recorded ' . l('maximum detection', 'node/' . $o->nid), 'status');
     drupal_goto($_SERVER['HTTP_REFERER']);
 }
 
@@ -288,6 +333,7 @@ function _bluetooth_check_in() {
         $o->field_ip_address['und'][0]['value'] = $params->address;
         $o->field_controller_url['und'][0]['value'] = $params->controller;
         $o->field_network_interface['und'][0]['value'] = $params->interface;
+        watchdog('bluetooth', 'Existing receiver checked in : '. $params->name);
         node_save($o);
     } else if ( (!isset($result['node'])) || count($result['node']) == 0) {
         $o = new stdClass();
@@ -296,7 +342,7 @@ function _bluetooth_check_in() {
         $o->field_ip_address['und'][0]['value'] = $params->address;
         $o->field_controller_url['und'][0]['value'] = $params->controller;
         $o->field_network_interface['und'][0]['value'] = $params->interface;
-        watchdog('bt_planview', 'New receiver checked in : '. $params['name']);
+        watchdog('bt_planview', 'New receiver checked in : '. $params->name);
         node_save($o);
     } else {
         watchdog('bluetooth', 'Check-in from ' . $params['name'] . ' returned multiple objects');

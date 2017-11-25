@@ -438,6 +438,7 @@ function _bt_planview_gather_beacon_detections($nid) {
             $subr = $subq->entityCondition('entity_type', 'node')
                          ->entityCondition('bundle', 'bt_beacon_detection', '=')
                          ->fieldCondition('field_receiver', 'target_id', $rcnid, '=')
+                         ->fieldCondition('field_detection_mode', 'value', 'live', '=')
                          ->execute();
             $ret['detects'][$rcnid] = (isset($subr['node'])) ? node_load_multiple(array_keys($subr['node'])) : array();
             $ret['locations'][$rcnid] = array(

@@ -174,6 +174,87 @@ function bluetooth_beacons_field_default_field_instances() {
     ),
   );
 
+  // Exported field_instance: 'node-bt_beacon_detection-field_detection_mode'.
+  $field_instances['node-bt_beacon_detection-field_detection_mode'] = array(
+    'bundle' => 'bt_beacon_detection',
+    'default_value' => array(
+      0 => array(
+        'value' => 'live',
+      ),
+    ),
+    'deleted' => 0,
+    'description' => 'Meta data about the detection. If "measured" then see the distance field for the distance of the beacon from the receiver.',
+    'display' => array(
+      'default' => array(
+        'label' => 'above',
+        'module' => 'list',
+        'settings' => array(),
+        'type' => 'list_default',
+        'weight' => 5,
+      ),
+      'teaser' => array(
+        'label' => 'above',
+        'settings' => array(),
+        'type' => 'hidden',
+        'weight' => 0,
+      ),
+    ),
+    'entity_type' => 'node',
+    'field_name' => 'field_detection_mode',
+    'label' => 'Detection Mode',
+    'required' => 0,
+    'settings' => array(
+      'user_register_form' => FALSE,
+    ),
+    'widget' => array(
+      'active' => 1,
+      'module' => 'options',
+      'settings' => array(),
+      'type' => 'options_select',
+      'weight' => 3,
+    ),
+  );
+
+  // Exported field_instance: 'node-bt_beacon_detection-field_floor_plan'.
+  $field_instances['node-bt_beacon_detection-field_floor_plan'] = array(
+    'bundle' => 'bt_beacon_detection',
+    'default_value' => NULL,
+    'deleted' => 0,
+    'description' => 'For measurement, the floor plan on which the detection was observed',
+    'display' => array(
+      'default' => array(
+        'label' => 'above',
+        'module' => 'entityreference',
+        'settings' => array(
+          'bypass_access' => FALSE,
+          'link' => FALSE,
+        ),
+        'type' => 'entityreference_label',
+        'weight' => 9,
+      ),
+      'teaser' => array(
+        'label' => 'above',
+        'settings' => array(),
+        'type' => 'hidden',
+        'weight' => 0,
+      ),
+    ),
+    'entity_type' => 'node',
+    'field_name' => 'field_floor_plan',
+    'label' => 'Floor Plan',
+    'required' => 0,
+    'settings' => array(
+      'user_register_form' => FALSE,
+    ),
+    'widget' => array(
+      'active' => 1,
+      'module' => 'options',
+      'settings' => array(),
+      'type' => 'options_select',
+      'weight' => 10,
+    ),
+  );
+
   // Exported field_instance: 'node-bt_beacon_detection-field_receiver'.
   $field_instances['node-bt_beacon_detection-field_receiver'] = array(
     'bundle' => 'bt_beacon_detection',
@@ -257,6 +338,52 @@ function bluetooth_beacons_field_default_field_instances() {
       'settings' => array(),
       'type' => 'number',
       'weight' => -1,
+    ),
+  );
+
+  // Exported field_instance: 'node-bt_beacon_detection-field_sample_distance'.
+  $field_instances['node-bt_beacon_detection-field_sample_distance'] = array(
+    'bundle' => 'bt_beacon_detection',
+    'default_value' => NULL,
+    'deleted' => 0,
+    'description' => 'Distance of the beacon from the receiver in feet for "measurement" detections',
+    'display' => array(
+      'default' => array(
+        'label' => 'above',
+        'module' => 'number',
+        'settings' => array(
+          'decimal_separator' => '.',
+          'prefix_suffix' => TRUE,
+          'scale' => 2,
+          'thousand_separator' => '',
+        ),
+        'type' => 'number_decimal',
+        'weight' => 6,
+      ),
+      'teaser' => array(
+        'label' => 'above',
+        'settings' => array(),
+        'type' => 'hidden',
+        'weight' => 0,
+      ),
+    ),
+    'entity_type' => 'node',
+    'field_name' => 'field_sample_distance',
+    'label' => 'Sample Distance',
+    'required' => 0,
+    'settings' => array(
+      'max' => '',
+      'min' => '',
+      'prefix' => '',
+      'suffix' => '',
+      'user_register_form' => FALSE,
+    ),
+    'widget' => array(
+      'active' => 0,
+      'module' => 'number',
+      'settings' => array(),
+      'type' => 'number',
+      'weight' => 4,
     ),
   );
 
@@ -361,6 +488,98 @@ function bluetooth_beacons_field_default_field_instances() {
     ),
   );
 
+  // Exported field_instance: 'node-bt_beacon_detection-field_x'.
+  $field_instances['node-bt_beacon_detection-field_x'] = array(
+    'bundle' => 'bt_beacon_detection',
+    'default_value' => NULL,
+    'deleted' => 0,
+    'description' => 'For measurements, the location of the beacon',
+    'display' => array(
+      'default' => array(
+        'label' => 'above',
+        'module' => 'number',
+        'settings' => array(
+          'decimal_separator' => '.',
+          'prefix_suffix' => TRUE,
+          'scale' => 2,
+          'thousand_separator' => '',
+        ),
+        'type' => 'number_decimal',
+        'weight' => 7,
+      ),
+      'teaser' => array(
+        'label' => 'above',
+        'settings' => array(),
+        'type' => 'hidden',
+        'weight' => 0,
+      ),
+    ),
+    'entity_type' => 'node',
+    'field_name' => 'field_x',
+    'label' => 'X',
+    'required' => 0,
+    'settings' => array(
+      'max' => '',
+      'min' => '',
+      'prefix' => '',
+      'suffix' => '',
+      'user_register_form' => FALSE,
+    ),
+    'widget' => array(
+      'active' => 0,
+      'module' => 'number',
+      'settings' => array(),
+      'type' => 'number',
+      'weight' => 6,
+    ),
+  );
+
+  // Exported field_instance: 'node-bt_beacon_detection-field_y'.
+  $field_instances['node-bt_beacon_detection-field_y'] = array(
+    'bundle' => 'bt_beacon_detection',
+    'default_value' => NULL,
+    'deleted' => 0,
+    'description' => 'For measurements, the location of the beacon',
+    'display' => array(
+      'default' => array(
+        'label' => 'above',
+        'module' => 'number',
+        'settings' => array(
+          'decimal_separator' => '.',
+          'prefix_suffix' => TRUE,
+          'scale' => 2,
+          'thousand_separator' => '',
+        ),
+        'type' => 'number_decimal',
+        'weight' => 8,
+      ),
+      'teaser' => array(
+        'label' => 'above',
+        'settings' => array(),
+        'type' => 'hidden',
+        'weight' => 0,
+      ),
+    ),
+    'entity_type' => 'node',
+    'field_name' => 'field_y',
+    'label' => 'Y',
+    'required' => 0,
+    'settings' => array(
+      'max' => '',
+      'min' => '',
+      'prefix' => '',
+      'suffix' => '',
+      'user_register_form' => FALSE,
+    ),
+    'widget' => array(
+      'active' => 0,
+      'module' => 'number',
+      'settings' => array(),
+      'type' => 'number',
+      'weight' => 8,
+    ),
+  );
+
   // Exported field_instance: 'node-bt_floor_plan-field_description'.
   $field_instances['node-bt_floor_plan-field_description'] = array(
     'bundle' => 'bt_floor_plan',
@@ -448,6 +667,172 @@ function bluetooth_beacons_field_default_field_instances() {
       ),
       'type' => 'image_image',
       'weight' => -3,
+    ),
+  );
+
+  // Exported field_instance: 'node-bt_mqtt_listener-field_keepalive'.
+  $field_instances['node-bt_mqtt_listener-field_keepalive'] = array(
+    'bundle' => 'bt_mqtt_listener',
+    'default_value' => NULL,
+    'deleted' => 0,
+    'description' => 'Number of seconds to set the MQTT keepalive when connecting to the broker',
+    'display' => array(
+      'default' => array(
+        'label' => 'above',
+        'module' => 'number',
+        'settings' => array(
+          'decimal_separator' => '.',
+          'prefix_suffix' => TRUE,
+          'scale' => 0,
+          'thousand_separator' => '',
+        ),
+        'type' => 'number_integer',
+        'weight' => 3,
+      ),
+      'teaser' => array(
+        'label' => 'above',
+        'settings' => array(),
+        'type' => 'hidden',
+        'weight' => 0,
+      ),
+    ),
+    'entity_type' => 'node',
+    'field_name' => 'field_keepalive',
+    'label' => 'Keepalive',
+    'required' => 0,
+    'settings' => array(
+      'max' => '',
+      'min' => '',
+      'prefix' => '',
+      'suffix' => '',
+      'user_register_form' => FALSE,
+    ),
+    'widget' => array(
+      'active' => 0,
+      'module' => 'number',
+      'settings' => array(),
+      'type' => 'number',
+      'weight' => 0,
+    ),
+  );
+
+  // Exported field_instance: 'node-bt_mqtt_listener-field_mqtt_address'.
+  $field_instances['node-bt_mqtt_listener-field_mqtt_address'] = array(
+    'bundle' => 'bt_mqtt_listener',
+    'default_value' => NULL,
+    'deleted' => 0,
+    'description' => 'Server address and port for the MQTT broker',
+    'display' => array(
+      'default' => array(
+        'label' => 'above',
+        'module' => 'text',
+        'settings' => array(),
+        'type' => 'text_default',
+        'weight' => 2,
+      ),
+      'teaser' => array(
+        'label' => 'above',
+        'settings' => array(),
+        'type' => 'hidden',
+        'weight' => 0,
+      ),
+    ),
+    'entity_type' => 'node',
+    'field_name' => 'field_mqtt_address',
+    'label' => 'MQTT Address',
+    'required' => 0,
+    'settings' => array(
+      'text_processing' => 0,
+      'user_register_form' => FALSE,
+    ),
+    'widget' => array(
+      'active' => 1,
+      'module' => 'text',
+      'settings' => array(
+        'size' => 60,
+      ),
+      'type' => 'text_textfield',
+      'weight' => -1,
+    ),
+  );
+
+  // Exported field_instance: 'node-bt_mqtt_listener-field_mqtt_listener_url'.
+  $field_instances['node-bt_mqtt_listener-field_mqtt_listener_url'] = array(
+    'bundle' => 'bt_mqtt_listener',
+    'default_value' => NULL,
+    'deleted' => 0,
+    'description' => 'The URL to the controller of the MQTT listener.',
+    'display' => array(
+      'default' => array(
+        'label' => 'above',
+        'module' => 'text',
+        'settings' => array(),
+        'type' => 'text_default',
+        'weight' => 1,
+      ),
+      'teaser' => array(
+        'label' => 'above',
+        'settings' => array(),
+        'type' => 'hidden',
+        'weight' => 0,
+      ),
+    ),
+    'entity_type' => 'node',
+    'field_name' => 'field_mqtt_listener_url',
+    'label' => 'MQTT Listener URL',
+    'required' => 0,
+    'settings' => array(
+      'text_processing' => 0,
+      'user_register_form' => FALSE,
+    ),
+    'widget' => array(
+      'active' => 1,
+      'module' => 'text',
+      'settings' => array(
+        'size' => 60,
+      ),
+      'type' => 'text_textfield',
+      'weight' => -3,
+    ),
+  );
+
+  // Exported field_instance: 'node-bt_mqtt_listener-field_mqtt_topic'.
+  $field_instances['node-bt_mqtt_listener-field_mqtt_topic'] = array(
+    'bundle' => 'bt_mqtt_listener',
+    'default_value' => NULL,
+    'deleted' => 0,
+    'description' => 'Topic pattern to subscribe the MQTT Listener to',
+    'display' => array(
+      'default' => array(
+        'label' => 'above',
+        'module' => 'text',
+        'settings' => array(),
+        'type' => 'text_default',
+        'weight' => 4,
+      ),
+      'teaser' => array(
+        'label' => 'above',
+        'settings' => array(),
+        'type' => 'hidden',
+        'weight' => 0,
+      ),
+    ),
+    'entity_type' => 'node',
+    'field_name' => 'field_mqtt_topic',
+    'label' => 'MQTT Topic',
+    'required' => 0,
+    'settings' => array(
+      'text_processing' => 0,
+      'user_register_form' => FALSE,
+    ),
+    'widget' => array(
+      'active' => 1,
+      'module' => 'text',
+      'settings' => array(
+        'size' => 60,
+      ),
+      'type' => 'text_textfield',
+      'weight' => 1,
     ),
   );
 
@@ -571,19 +956,22 @@ function bluetooth_beacons_field_default_field_instances() {
     ),
   );
 
-  // Exported field_instance: 'node-bt_receiver-field_mqtt_address'.
-  $field_instances['node-bt_receiver-field_mqtt_address'] = array(
+  // Exported field_instance: 'node-bt_receiver-field_mqtt_broker'.
+  $field_instances['node-bt_receiver-field_mqtt_broker'] = array(
     'bundle' => 'bt_receiver',
     'default_value' => NULL,
     'deleted' => 0,
-    'description' => 'Protocol, IP address, and port number of the MQTT queue to receive the messages.',
+    'description' => 'Entity reference to the MQTT Listener',
     'display' => array(
       'default' => array(
         'label' => 'above',
-        'module' => 'text',
-        'settings' => array(),
-        'type' => 'text_default',
-        'weight' => 10,
+        'module' => 'entityreference',
+        'settings' => array(
+          'bypass_access' => FALSE,
+          'link' => FALSE,
+        ),
+        'type' => 'entityreference_label',
+        'weight' => 14,
       ),
       'teaser' => array(
         'label' => 'above',
@@ -593,21 +981,22 @@ function bluetooth_beacons_field_default_field_instances() {
       ),
     ),
     'entity_type' => 'node',
-    'field_name' => 'field_mqtt_address',
-    'label' => 'MQTT Address',
+    'field_name' => 'field_mqtt_broker',
+    'label' => 'MQTT Broker',
     'required' => 0,
     'settings' => array(
-      'text_processing' => 0,
       'user_register_form' => FALSE,
     ),
     'widget' => array(
       'active' => 1,
-      'module' => 'text',
+      'module' => 'entityreference',
       'settings' => array(
+        'match_operator' => 'CONTAINS',
+        'path' => '',
         'size' => 60,
       ),
-      'type' => 'text_textfield',
-      'weight' => 3,
+      'type' => 'entityreference_autocomplete',
+      'weight' => 14,
     ),
   );
 
@@ -1233,9 +1622,14 @@ function bluetooth_beacons_field_default_field_instances() {
   t('Define the method for reporting the RSSI from a sampling interval.');
   t('Description');
   t('Description of the floor plan');
+  t('Detection Mode');
+  t('Distance of the beacon from the receiver in feet for "measurement" detections');
+  t('Entity reference to the MQTT Listener');
   t('Field Name');
   t('Floor Plan');
   t('Floor plan that this location is relative to');
+  t('For measurement, the floor plan on which the detection was observed');
+  t('For measurements, the location of the beacon');
   t('Horizontal position of the receiver relative to the floor plan, (0,0) being the upper left corner.');
   t('Human readable description for identifying the beacon');
   t('Human readable description of the bluetooth receiver');
@@ -1245,26 +1639,34 @@ function bluetooth_beacons_field_default_field_instances() {
   t('Image');
   t('Image file for the floor plan display');
   t('Interval, in millisecond, to sample Bluetooth Beacon data.');
+  t('Keepalive');
   t('MQTT Address');
+  t('MQTT Broker');
+  t('MQTT Listener URL');
+  t('MQTT Topic');
+  t('Meta data about the detection. If "measured" then see the distance field for the distance of the beacon from the receiver.');
   t('Name of the interface on the receiver to retrieve IP address visible from the server.');
   t('Namespace');
   t('Namespace of Eddystone beacons to accept.');
   t('Network Interface');
   t('Number of milliseconds between publications of the temperature, if the temperature publication is on');
-  t('Protocol, IP address, and port number of the MQTT queue to receive the messages.');
+  t('Number of seconds to set the MQTT keepalive when connecting to the broker');
   t('Publish Temperature');
   t('RSSI');
   t('Receiver');
   t('Receiver Icon');
   t('Receiver Status');
   t('Receiver running status, should be "RUNNING", "NOT_RUNNING", or "ERROR"');
+  t('Sample Distance');
   t('Sample Interval');
   t('Sample Method');
   t('Sensor Path');
+  t('Server address and port for the MQTT broker');
   t('Temperature Field');
   t('Temperature Frequency');
   t('Temperature Sensor');
   t('The Radio Signal Strength Indicator during the detection');
+  t('The URL to the controller of the MQTT listener.');
   t('The beacon that identified itself on this detection');
   t('The field name in SA to publish the RSSI value. The name of the receiver can be inserted by using the replacement pattern %RECEIVER%.');
   t('The receiver that made this detection');
@@ -1272,6 +1674,7 @@ function bluetooth_beacons_field_default_field_instances() {
   t('The sensor path from SA for this beacon');
   t('The timestamp of the detection');
   t('Timestamp');
+  t('Topic pattern to subscribe the MQTT Listener to');
   t('URL to use for check-in function');
   t('Vertical position of the receiver relative to the floor plan, (0,0) being the upper left corner.');
   t('When publishing temperature of the receiver, the SA path for the temperature value');

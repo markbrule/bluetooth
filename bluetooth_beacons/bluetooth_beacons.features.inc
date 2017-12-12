@@ -40,6 +40,14 @@ function bluetooth_beacons_node_info() {
       'title_label' => t('Name'),
       'help' => '',
     ),
+    'bt_mqtt_listener' => array(
+      'name' => t('BT MQTT Listener'),
+      'base' => 'node_content',
+      'description' => t('Process for listening in on MQTT traffic'),
+      'has_title' => '1',
+      'title_label' => t('Title'),
+      'help' => '',
+    ),
     'bt_receiver' => array(
       'name' => t('BT Receiver'),
       'base' => 'node_content',

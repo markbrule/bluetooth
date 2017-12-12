@@ -131,6 +131,32 @@ function bluetooth_beacons_field_default_field_bases() {
     'type' => 'text',
   );
 
+  // Exported field_base: 'field_detection_mode'.
+  $field_bases['field_detection_mode'] = array(
+    'active' => 1,
+    'cardinality' => 1,
+    'deleted' => 0,
+    'entity_types' => array(),
+    'field_name' => 'field_detection_mode',
+    'indexes' => array(
+      'value' => array(
+        0 => 'value',
+      ),
+    ),
+    'locked' => 0,
+    'module' => 'list',
+    'settings' => array(
+      'allowed_values' => array(
+        'live' => 'live',
+        'measurement' => 'measurement',
+        'max' => 'max',
+      ),
+      'allowed_values_function' => '',
+    ),
+    'translatable' => 0,
+    'type' => 'list_text',
+  );
+
   // Exported field_base: 'field_field_name'.
   $field_bases['field_field_name'] = array(
     'active' => 1,
@@ -232,6 +258,21 @@ function bluetooth_beacons_field_default_field_bases() {
     'type' => 'text',
   );
 
+  // Exported field_base: 'field_keepalive'.
+  $field_bases['field_keepalive'] = array(
+    'active' => 1,
+    'cardinality' => 1,
+    'deleted' => 0,
+    'entity_types' => array(),
+    'field_name' => 'field_keepalive',
+    'indexes' => array(),
+    'locked' => 0,
+    'module' => 'number',
+    'settings' => array(),
+    'translatable' => 0,
+    'type' => 'number_integer',
+  );
+
   // Exported field_base: 'field_mqtt_address'.
   $field_bases['field_mqtt_address'] = array(
     'active' => 1,
@@ -248,6 +289,83 @@ function bluetooth_beacons_field_default_field_bases() {
     'module' => 'text',
     'settings' => array(
       'max_length' => 100,
+    ),
+    'translatable' => 0,
+    'type' => 'text',
+  );
+
+  // Exported field_base: 'field_mqtt_broker'.
+  $field_bases['field_mqtt_broker'] = array(
+    'active' => 1,
+    'cardinality' => 1,
+    'deleted' => 0,
+    'entity_types' => array(),
+    'field_name' => 'field_mqtt_broker',
+    'indexes' => array(
+      'target_id' => array(
+        0 => 'target_id',
+      ),
+    ),
+    'locked' => 0,
+    'module' => 'entityreference',
+    'settings' => array(
+      'handler' => 'base',
+      'handler_settings' => array(
+        'behaviors' => array(
+          'views-select-list' => array(
+            'status' => 0,
+          ),
+        ),
+        'sort' => array(
+          'type' => 'none',
+        ),
+        'target_bundles' => array(
+          'bt_mqtt_listener' => 'bt_mqtt_listener',
+        ),
+      ),
+      'target_type' => 'node',
+    ),
+    'translatable' => 0,
+    'type' => 'entityreference',
+  );
+
+  // Exported field_base: 'field_mqtt_listener_url'.
+  $field_bases['field_mqtt_listener_url'] = array(
+    'active' => 1,
+    'cardinality' => 1,
+    'deleted' => 0,
+    'entity_types' => array(),
+    'field_name' => 'field_mqtt_listener_url',
+    'indexes' => array(
+      'format' => array(
+        0 => 'format',
+      ),
+    ),
+    'locked' => 0,
+    'module' => 'text',
+    'settings' => array(
+      'max_length' => 1000,
+    ),
+    'translatable' => 0,
+    'type' => 'text',
+  );
+
+  // Exported field_base: 'field_mqtt_topic'.
+  $field_bases['field_mqtt_topic'] = array(
+    'active' => 1,
+    'cardinality' => 1,
+    'deleted' => 0,
+    'entity_types' => array(),
+    'field_name' => 'field_mqtt_topic',
+    'indexes' => array(
+      'format' => array(
+        0 => 'format',
+      ),
+    ),
+    'locked' => 0,
+    'module' => 'text',
+    'settings' => array(
+      'max_length' => 255,
     ),
     'translatable' => 0,
     'type' => 'text',
@@ -413,6 +531,23 @@ function bluetooth_beacons_field_default_field_bases() {
     'settings' => array(),
     'translatable' => 0,
     'type' => 'number_integer',
+  );
+
+  // Exported field_base: 'field_sample_distance'.
+  $field_bases['field_sample_distance'] = array(
+    'active' => 1,
+    'cardinality' => 1,
+    'deleted' => 0,
+    'entity_types' => array(),
+    'field_name' => 'field_sample_distance',
+    'indexes' => array(),
+    'locked' => 0,
+    'module' => 'number',
+    'settings' => array(
+      'decimal_separator' => '.',
+    ),
+    'translatable' => 0,
+    'type' => 'number_float',
   );
 
   // Exported field_base: 'field_sample_interval'.

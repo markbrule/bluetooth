@@ -57,6 +57,14 @@ function bluetooth_menu() {
         'access callback' => true,
     );
     
+    // usage: mqtt/publish-config/(nid)
+    $items['mqtt/publish-config/%'] = array(
+        'type' => MENU_CALLBACK,
+        'page callback' => "_bluetooth_publish_listener_config",
+        'page arguments' => array(2),
+        'access callback' => true,
+    );
+
     return $items;
 }
 
@@ -163,6 +171,7 @@ function _bluetooth_publish_beacons_config($rnid) {
         }
 
         $send_to = str_replace("%IP%", $rcv->field_ip_address['und'][0]['value'], variable_get(CONFIG_URL));
+        $mqtt_listener = node_load($rcv->field_mqtt_broker['und'][0]['target_id']);
         $config = array(
             'version' => '1.2',
             'name' => $rcv->title,
@@ -170,7 +179,7 @@ function _bluetooth_publish_beacons_config($rnid) {
             'interface' => $rcv->field_network_interface['und'][0]['value'],
             'beacons' => array(
                 'name' => $rcv->title,
-                'mqtt' => $rcv->field_mqtt_address['und'][0]['value'],
+                'mqtt' => $mqtt_listener->field_mqtt_address['und'][0]['value'],
                 'frequency' => $rcv->field_sample_interval['und'][0]['value'],
                 'namespace' => $rcv->field_namespace['und'][0]['value'],
                 'mode' => $rcv->field_sample_method['und'][0]['value'],
@@ -179,7 +188,7 @@ function _bluetooth_publish_beacons_config($rnid) {
         );
         if ($rcv->field_publish_temperature['und'][0]['value']) {
             $config['temperature'] = array(
-                'mqtt' => $rcv->field_mqtt_address['und'][0]['value'],
+                'mqtt' => $mqtt_listener->field_mqtt_address['und'][0]['value'],
                 'frequency' => $rcv->field_temperature_frequency['und'][0]['value'],
                 'sensor' => $rcv->field_temperature_sensor['und'][0]['value'],
                 'field' => $rcv->field_temperature_field['und'][0]['value'],
@@ -198,6 +207,41 @@ function _bluetooth_publish_beacons_config($rnid) {
         }
     }
 
+    drupal_goto($_SERVER['HTTP_REFERER']);
+}
+
+
+/**
+ * Publish MQTT Listener configuration
+ */
+function _bluetooth_publish_listener_config($nid) {
+    $n = node_load($nid);
+    if ($n == null || $n->type != 'bt_mqtt_listener') {
+        drupal_set_message('The provided node is not an MQTT Listener', 'error');
+        return;
+    }
+
+    // TODO: dependency on variable name from NodeContentRest - should add an API to that module
+    $config = array(
+        'server' => $n->field_mqtt_address['und'][0]['value'],
+        'keepalive' => $n->field_keepalive['und'][0]['value'],
+        'topic' => $n->field_mqtt_topic['und'][0]['value'],
+        'object_endpoint' => (isset($_SERVER['HTTPS']) ? "https" : "http") . "://$_SERVER[HTTP_HOST]/" . variable_get("NODE_REST_CONTEXT"),
+    );
+    
+    $send_to = $n->field_mqtt_listener_url['und'][0]['value'] . '/config';
+    $x = drupal_http_request($send_to, array(
+            'headers' => array('Content-Type:application/json'),
+            'method' => 'POST',
+            'data' => json_encode($config),
+    ));
+    if ($x->code == 200) {
+        drupal_set_message('Updated MQTT listener configuration at ' . $send_to, 'status');
+    } else {
+        watchdog('bluetooth', 'Error updating MQTT listener: ' . $x->error);
+        drupal_set_message('Error updating [' . $x->code . '] listener: ' . $n->title, 'error');
+    }
+    
     drupal_goto($_SERVER['HTTP_REFERER']);
 }
 
